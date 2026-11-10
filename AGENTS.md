@@ -17,6 +17,7 @@
 - API 키는 클라이언트로 내려보내지 않는다. `/api/config`는 키 보유 여부(boolean)만 반환한다 (`server/index.ts:147-157`). 키 값을 응답, 로그, 에러 메시지에 포함하지 마라.
 - Google 호출 URL에 키가 쿼리스트링으로 들어간다 (`server/index.ts:99`). 이 URL을 로깅하거나 에러 메시지에 넣지 마라.
 - `.env`는 커밋 금지 (`.gitignore`).
+- 민감 파일(`.env`, `.env.*`, `*credential*`, `*secret*`, `*.pem`, `*.key`, `id_rsa*`, `.npmrc`, `~/.ssh`, `~/.aws` 등)은 읽기·수정·쓰기(`Write`/`Edit`, Bash의 `cp`/`mv`/`rm`/`tee`/`sed -i`/리다이렉트/`Set-Content`/`Out-File` 등)·삭제·출력 모두 금지다. `.claude/settings.json`의 `permissions.deny`로 차단되어 있으며, 이 규칙을 우회(Bash `cat`/`type`, 다른 도구, 복사본 생성)하거나 deny 목록을 완화하지 마라. 환경 변수가 필요하면 값을 읽지 말고 `.env`의 변수 이름만 사용자에게 확인하라.
 
 ### Do's & Don'ts
 

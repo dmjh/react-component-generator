@@ -1,5 +1,146 @@
 {
   "worktree": {
     "baseRef": "head"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(*git commit*)",
+            "command": "bun run test >&2 || { echo 'git commit 차단: 테스트가 모두 통과해야 커밋할 수 있습니다. 실패한 테스트를 먼저 고치세요.' >&2; exit 2; }",
+            "timeout": 300,
+            "statusMessage": "커밋 전 테스트 실행 중..."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Edit(src/**)",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/tdd-reminder.sh\""
+          },
+          {
+            "type": "command",
+            "if": "Write(src/**)",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/tdd-reminder.sh\""
+          },
+          {
+            "type": "command",
+            "if": "Edit(server/**)",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/tdd-reminder.sh\""
+          },
+          {
+            "type": "command",
+            "if": "Write(server/**)",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/tdd-reminder.sh\""
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*credential*)",
+      "Read(**/*secret*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*.p12)",
+      "Read(**/*.pfx)",
+      "Read(**/id_rsa*)",
+      "Read(**/id_ed25519*)",
+      "Read(**/.npmrc)",
+      "Read(**/.netrc)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Edit(**/*credential*)",
+      "Edit(**/*secret*)",
+      "Edit(**/*.pem)",
+      "Edit(**/*.key)",
+      "Edit(**/*.p12)",
+      "Edit(**/*.pfx)",
+      "Edit(**/id_rsa*)",
+      "Edit(**/id_ed25519*)",
+      "Edit(**/.npmrc)",
+      "Edit(**/.netrc)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/.aws/**)",
+      "Write(**/.env)",
+      "Write(**/.env.*)",
+      "Write(**/*credential*)",
+      "Write(**/*secret*)",
+      "Write(**/*.pem)",
+      "Write(**/*.key)",
+      "Write(**/*.p12)",
+      "Write(**/*.pfx)",
+      "Write(**/id_rsa*)",
+      "Write(**/id_ed25519*)",
+      "Write(**/.npmrc)",
+      "Write(**/.netrc)",
+      "Write(~/.ssh/**)",
+      "Write(~/.aws/**)",
+      "NotebookEdit(**/.env)",
+      "NotebookEdit(**/.env.*)",
+      "NotebookEdit(**/*credential*)",
+      "NotebookEdit(**/*secret*)",
+      "Bash(*.env*)",
+      "Bash(*credential*)",
+      "Bash(*secret*)",
+      "Bash(*.pem*)",
+      "Bash(*id_rsa*)",
+      "Bash(cp *.env*)",
+      "Bash(cp *credential*)",
+      "Bash(cp *secret*)",
+      "Bash(cp *.pem*)",
+      "Bash(cp *.key*)",
+      "Bash(mv *.env*)",
+      "Bash(mv *credential*)",
+      "Bash(mv *secret*)",
+      "Bash(mv *.pem*)",
+      "Bash(mv *.key*)",
+      "Bash(rm *.env*)",
+      "Bash(rm *credential*)",
+      "Bash(rm *secret*)",
+      "Bash(rm *.pem*)",
+      "Bash(rm *.key*)",
+      "Bash(tee *.env*)",
+      "Bash(tee *credential*)",
+      "Bash(tee *secret*)",
+      "Bash(tee *.pem*)",
+      "Bash(tee *.key*)",
+      "Bash(sed -i *.env*)",
+      "Bash(sed -i *credential*)",
+      "Bash(sed -i *secret*)",
+      "Bash(sed -i *.pem*)",
+      "Bash(sed -i *.key*)",
+      "Bash(Set-Content *.env*)",
+      "Bash(Set-Content *credential*)",
+      "Bash(Set-Content *secret*)",
+      "Bash(Set-Content *.pem*)",
+      "Bash(Set-Content *.key*)",
+      "Bash(Add-Content *.env*)",
+      "Bash(Add-Content *credential*)",
+      "Bash(Add-Content *secret*)",
+      "Bash(Add-Content *.pem*)",
+      "Bash(Add-Content *.key*)",
+      "Bash(Out-File *.env*)",
+      "Bash(Out-File *credential*)",
+      "Bash(Out-File *secret*)",
+      "Bash(Out-File *.pem*)",
+      "Bash(Out-File *.key*)",
+      "Bash(Remove-Item *.env*)",
+      "Bash(Remove-Item *credential*)",
+      "Bash(Remove-Item *secret*)",
+      "Bash(Remove-Item *.pem*)",
+      "Bash(Remove-Item *.key*)"
+    ]
   }
 }
