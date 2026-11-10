@@ -17,6 +17,10 @@ describe('parseNdjson', () => {
     expect(rest).toBe('{"type":"del');
   });
 
+  it('JSON이 아닌 줄은 파서 원문 대신 고정 문구로 던진다', () => {
+    expect(() => parseNdjson('<html>oops</html>\n')).toThrow('응답 형식');
+  });
+
   it('빈 줄은 건너뛴다', () => {
     const { events } = parseNdjson('\n{"type":"delta","text":"a"}\n\n');
     expect(events).toHaveLength(1);

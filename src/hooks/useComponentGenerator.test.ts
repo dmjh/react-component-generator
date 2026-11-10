@@ -19,6 +19,7 @@ function makeStream() {
   return {
     body,
     push: (event: object) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`)),
+    pushRaw: (text: string) => controller.enqueue(encoder.encode(text)),
     close: () => controller.close(),
   };
 }
@@ -136,6 +137,25 @@ describe('useComponentGenerator 스트리밍', () => {
     expect(result.current.error).toBe('생성된 코드가 너무 길어 잘렸습니다.');
     expect(result.current.components).toHaveLength(0);
     expect(result.current.streamingId).toBeNull();
+  });
+
+  it('깨진 응답 줄은 파서 원문 없이 고정 문구로 표시하고 미완성 컴포넌트를 제거한다', async () => {
+    const stream = makeStream();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: stream.body }));
+    const { result } = renderHook(() => useComponentGenerator());
+
+    act(() => {
+      void result.current.generate('버튼', undefined, 'google');
+    });
+    stream.push({ type: 'delta', text: 'const A' });
+    await waitFor(() => expect(result.current.components).toHaveLength(1));
+    stream.pushRaw('{broken json\n');
+    stream.close();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.error).toContain('응답 형식');
+    expect(result.current.error).not.toContain('JSON');
+    expect(result.current.components).toHaveLength(0);
   });
 
   it('done 없이 스트림이 끊기면 에러로 처리하고 미완성 컴포넌트를 제거한다', async () => {

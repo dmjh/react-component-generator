@@ -6,6 +6,7 @@ import {
   extractAnthropicDelta,
   extractGoogleChunk,
   mapErrorResponse,
+  UserFacingError,
 } from './generator';
 import { withModelFallback } from './fallback';
 
@@ -90,7 +91,7 @@ async function callAnthropic(prompt: string, apiKey: string): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error(`Claude API error: ${response.status}`);
+    throw new UserFacingError(`Claude API error: ${response.status}`);
   }
 
   const data = (await response.json()) as {
@@ -117,7 +118,7 @@ async function callGoogleModel(prompt: string, apiKey: string, model: string): P
   });
 
   if (!response.ok) {
-    throw new Error(`Gemini API error: ${response.status}`);
+    throw new UserFacingError(`Gemini API error: ${response.status}`);
   }
 
   const data = (await response.json()) as {
@@ -129,7 +130,7 @@ async function callGoogleModel(prompt: string, apiKey: string, model: string): P
 
   const candidate = data.candidates?.[0];
   if (candidate?.finishReason === 'MAX_TOKENS') {
-    throw new Error('생성된 코드가 너무 길어 잘렸습니다. 더 간단한 컴포넌트를 요청해주세요.');
+    throw new UserFacingError('생성된 코드가 너무 길어 잘렸습니다. 더 간단한 컴포넌트를 요청해주세요.');
   }
 
   return (
@@ -191,7 +192,7 @@ async function streamAnthropic(
   });
 
   if (!response.ok) {
-    throw new Error(`Claude API error: ${response.status}`);
+    throw new UserFacingError(`Claude API error: ${response.status}`);
   }
 
   return (async function* () {
@@ -201,7 +202,7 @@ async function streamAnthropic(
       if (text) yield text;
       if (isAnthropicStop(data)) stopped = true;
     }
-    if (!stopped) throw new Error(INCOMPLETE_STREAM_ERROR);
+    if (!stopped) throw new UserFacingError(INCOMPLETE_STREAM_ERROR);
   })();
 }
 
@@ -225,7 +226,7 @@ async function streamGoogleModel(
   });
 
   if (!response.ok) {
-    throw new Error(`Gemini API error: ${response.status}`);
+    throw new UserFacingError(`Gemini API error: ${response.status}`);
   }
 
   return (async function* () {
@@ -234,11 +235,11 @@ async function streamGoogleModel(
       const { text, finishReason } = extractGoogleChunk(data);
       if (text) yield text;
       if (finishReason === 'MAX_TOKENS') {
-        throw new Error('생성된 코드가 너무 길어 잘렸습니다. 더 간단한 컴포넌트를 요청해주세요.');
+        throw new UserFacingError('생성된 코드가 너무 길어 잘렸습니다. 더 간단한 컴포넌트를 요청해주세요.');
       }
       if (finishReason) finished = true;
     }
-    if (!finished) throw new Error(INCOMPLETE_STREAM_ERROR);
+    if (!finished) throw new UserFacingError(INCOMPLETE_STREAM_ERROR);
   })();
 }
 
@@ -272,8 +273,7 @@ function toNdjsonResponse(deltas: AsyncIterable<string>): Response {
         }
         send(controller, { type: 'done', code: ensureRenderCall(stripCodeFences(text)) });
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        send(controller, { type: 'error', error: mapErrorResponse(message).error });
+        send(controller, { type: 'error', error: mapErrorResponse(err).error });
       } finally {
         try {
           controller.close();
@@ -353,8 +353,7 @@ const server = Bun.serve({
 
         return Response.json({ code }, { headers: CORS_HEADERS });
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        const { status, error } = mapErrorResponse(message);
+        const { status, error } = mapErrorResponse(err);
 
         return Response.json({ error }, { status, headers: CORS_HEADERS });
       }

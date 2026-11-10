@@ -7,7 +7,17 @@ import {
   extractAnthropicDelta,
   extractGoogleChunk,
   mapErrorResponse,
+  UserFacingError,
 } from './generator';
+
+function thrownMessage(fn: () => unknown): string {
+  try {
+    fn();
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  return '';
+}
 
 describe('stripCodeFences', () => {
   it('언어 태그가 붙은 코드펜스를 제거한다', () => {
@@ -97,12 +107,25 @@ describe('extractAnthropicDelta', () => {
     expect(extractAnthropicDelta(JSON.stringify({ type: 'message_start' }))).toBe('');
   });
 
-  it('error 이벤트는 예외를 던진다', () => {
+  it('error 이벤트는 분류(type)만 담은 예외를 던진다', () => {
     const data = JSON.stringify({
       type: 'error',
-      error: { type: 'overloaded_error', message: 'Overloaded' },
+      error: { type: 'overloaded_error', message: 'upstream detail' },
     });
-    expect(() => extractAnthropicDelta(data)).toThrow('Overloaded');
+    expect(() => extractAnthropicDelta(data)).toThrow('Claude API error: overloaded_error');
+  });
+
+  it('error 이벤트의 업스트림 message 원문은 예외에 담지 않는다', () => {
+    const data = JSON.stringify({
+      type: 'error',
+      error: { type: 'overloaded_error', message: 'upstream detail' },
+    });
+    expect(thrownMessage(() => extractAnthropicDelta(data))).not.toContain('upstream detail');
+  });
+
+  it('error 이벤트 예외는 사용자에게 그대로 보여줘도 되는 UserFacingError다', () => {
+    const data = JSON.stringify({ type: 'error', error: { type: 'api_error' } });
+    expect(() => extractAnthropicDelta(data)).toThrow(UserFacingError);
   });
 });
 
@@ -125,9 +148,19 @@ describe('extractGoogleChunk', () => {
     expect(extractGoogleChunk('{}').text).toBe('');
   });
 
-  it('error 청크는 예외를 던진다', () => {
-    const data = JSON.stringify({ error: { code: 503, message: 'overloaded' } });
-    expect(() => extractGoogleChunk(data)).toThrow('503');
+  it('error 청크는 코드만 담은 예외를 던진다', () => {
+    const data = JSON.stringify({ error: { code: 503, message: 'upstream detail' } });
+    expect(() => extractGoogleChunk(data)).toThrow('Gemini API error: 503');
+  });
+
+  it('error 청크의 업스트림 message 원문은 예외에 담지 않는다', () => {
+    const data = JSON.stringify({ error: { code: 400, message: 'upstream detail' } });
+    expect(thrownMessage(() => extractGoogleChunk(data))).not.toContain('upstream detail');
+  });
+
+  it('error 청크 예외는 UserFacingError다', () => {
+    const data = JSON.stringify({ error: { code: 400 } });
+    expect(() => extractGoogleChunk(data)).toThrow(UserFacingError);
   });
 });
 
@@ -142,7 +175,21 @@ describe('mapErrorResponse', () => {
     expect(mapErrorResponse('Claude API error: 429').status).toBe(429);
   });
 
-  it('그 외에는 원문 메시지와 500을 반환한다', () => {
-    expect(mapErrorResponse('boom')).toEqual({ status: 500, error: 'boom' });
+  it('UserFacingError는 메시지를 그대로 500으로 반환한다', () => {
+    expect(mapErrorResponse(new UserFacingError('Claude API error: 401'))).toEqual({
+      status: 500,
+      error: 'Claude API error: 401',
+    });
+  });
+
+  it('일반 Error는 원문 대신 고정 문구를 반환한다', () => {
+    const r = mapErrorResponse(new SyntaxError('Unexpected token < in JSON at position 0'));
+    expect(r.status).toBe(500);
+    expect(r.error).not.toContain('Unexpected token');
+  });
+
+  it('URL이 담긴 네트워크 에러 원문(키 포함 가능)을 노출하지 않는다', () => {
+    const r = mapErrorResponse(new TypeError('fetch failed: https://x.test/?key=SECRET'));
+    expect(r.error).not.toContain('SECRET');
   });
 });
