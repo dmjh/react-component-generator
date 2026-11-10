@@ -730,3 +730,27 @@ button.close-box:active {
     animation: none;
   }
 }
+
+.prompt-meta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.prompt-error {
+  margin-right: auto;
+  color: var(--coral);
+  font-weight: 700;
+}
+
+.prompt-counter {
+  color: #44446a;
+  font-family: var(--font-mono);
+}
+
+.prompt-counter-over {
+  color: var(--coral);
+  font-weight: 700;
+}
