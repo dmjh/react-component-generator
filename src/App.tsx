@@ -4,6 +4,15 @@ import { ComponentCard } from './components/ComponentCard';
 import { Window } from './components/Window';
 import { useComponentGenerator } from './hooks/useComponentGenerator';
 import type { Provider } from './types';
+import {
+  readStorage,
+  writeStorage,
+  parseApiKeys,
+  parseProvider,
+  addPromptHistory,
+  PROMPT_HISTORY_MAX,
+  STORAGE_KEYS,
+} from './utils/storage';
 import './App.css';
 
 const PROVIDER_CONFIG = {
@@ -12,15 +21,30 @@ const PROVIDER_CONFIG = {
 } as const;
 
 function App() {
-  const [apiKey, setApiKey] = useState('');
+  const [apiKeys, setApiKeys] = useState(() =>
+    parseApiKeys(readStorage<unknown>(STORAGE_KEYS.apiKeys, null)),
+  );
   const [showKey, setShowKey] = useState(false);
-  const [provider, setProvider] = useState<Provider>('google');
+  const [provider, setProvider] = useState<Provider>(() =>
+    parseProvider(readStorage<unknown>(STORAGE_KEYS.provider, null)),
+  );
+  const [promptHistory, setPromptHistory] = useState<string[]>(() => {
+    const stored = readStorage<unknown>(STORAGE_KEYS.promptHistory, []);
+    return Array.isArray(stored)
+      ? stored.filter((p): p is string => typeof p === 'string').slice(0, PROMPT_HISTORY_MAX)
+      : [];
+  });
+  const apiKey = apiKeys[provider];
   const [envKeys, setEnvKeys] = useState<Record<Provider, boolean>>({
     anthropic: false,
     google: false,
   });
   const { components, isLoading, error, generate, removeComponent, clearAll } =
     useComponentGenerator();
+
+  useEffect(() => writeStorage(STORAGE_KEYS.apiKeys, apiKeys), [apiKeys]);
+  useEffect(() => writeStorage(STORAGE_KEYS.provider, provider), [provider]);
+  useEffect(() => writeStorage(STORAGE_KEYS.promptHistory, promptHistory), [promptHistory]);
 
   useEffect(() => {
     fetch('/api/config')
@@ -36,12 +60,12 @@ function App() {
       alert(`${PROVIDER_CONFIG[provider].label} API 키를 입력하거나 .env에 설정해주세요.`);
       return;
     }
+    setPromptHistory((prev) => addPromptHistory(prev, prompt));
     generate(prompt, apiKey || undefined, provider);
   };
 
-  const handleProviderChange = (newProvider: Provider) => {
-    setProvider(newProvider);
-    setApiKey('');
+  const handleApiKeyChange = (value: string) => {
+    setApiKeys((prev) => ({ ...prev, [provider]: value }));
   };
 
   const activeProvider = PROVIDER_CONFIG[provider].label;
@@ -71,7 +95,7 @@ function App() {
             <h1>프롬프트로 만드는 UI 워크벤치</h1>
             <p>요청을 입력하면 React 컴포넌트를 만들어요. 바로 미리보고, 코드로도 확인할 수 있어요.</p>
           </div>
-          <PromptInput onGenerate={handleGenerate} isLoading={isLoading} />
+          <PromptInput onGenerate={handleGenerate} isLoading={isLoading} history={promptHistory} />
         </Window>
 
         <Window title="실행 설정" className="settings-window">
@@ -80,7 +104,7 @@ function App() {
             <select
               id="provider"
               value={provider}
-              onChange={(e) => handleProviderChange(e.target.value as Provider)}
+              onChange={(e) => setProvider(e.target.value as Provider)}
             >
               {Object.entries(PROVIDER_CONFIG).map(([key, { label }]) => (
                 <option key={key} value={key}>
@@ -96,7 +120,7 @@ function App() {
                 id="api-key"
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
+                onChange={(e) => handleApiKeyChange(e.target.value)}
                 placeholder={
                   hasEnvKey
                     ? '서버 키 사용 중 (직접 입력으로 덮어쓰기 가능)'
