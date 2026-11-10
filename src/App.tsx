@@ -39,7 +39,7 @@ function App() {
     anthropic: false,
     google: false,
   });
-  const { components, isLoading, error, generate, removeComponent, clearAll } =
+  const { components, isLoading, error, streamingId, generate, removeComponent, clearAll } =
     useComponentGenerator();
 
   useEffect(() => writeStorage(STORAGE_KEYS.apiKeys, apiKeys), [apiKeys]);
@@ -178,7 +178,7 @@ function App() {
           </Window>
         )}
 
-        {isLoading && (
+        {isLoading && streamingId === null && (
           <div className="loading-card" role="status">
             <p>컴포넌트를 생성하고 있습니다...</p>
             <div className="progress" aria-hidden="true">
@@ -195,6 +195,7 @@ function App() {
               onRemove={removeComponent}
               onRegenerate={handleGenerate}
               isLoading={isLoading}
+              isStreaming={component.id === streamingId}
             />
           ))}
         </div>
